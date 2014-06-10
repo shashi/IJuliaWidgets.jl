@@ -26,8 +26,7 @@ import Main.IJulia: metadata
 
 export register_comm
 
-const comms = Dict{Int, Comm}()
-const signals = Dict{String, Signal}()
+const comms = Dict{Signal, Comm}()
 
 function send_update(comm :: Comm, v)
     # do this better!!
@@ -40,17 +39,16 @@ end
 
 
 function Main.IJulia.metadata(x :: Signal)
-    if ~haskey(comms, x.id)
+    if !haskey(comms, x)
         # One Comm channel per signal object
         comm = Comm("Signal")
 
-        comms[x.id] = comm   # Backend -> Comm
-        signals[comm.id] = x # Comm -> Backend
+        comms[x] = comm   # Backend -> Comm
 
         # prevent resending the first time?
         lift(v -> send_update(comm, v), x)
     else
-        comm = comms[x.id]
+        comm = comms[x]
     end
     return ["reactive"=>true, "comm_id"=>comm.id]
 end
