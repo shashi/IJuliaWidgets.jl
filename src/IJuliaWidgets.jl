@@ -3,6 +3,7 @@ require("Interact")
 
 module IJuliaWidgets
 
+using JSON
 using React
 using Interact
 
@@ -74,7 +75,7 @@ function register_comm{comm_id}(comm :: Comm{:InputWidget, comm_id}, msg)
     end
 end
 
-
+JSON.print(io::IO, s::Signal) = JSON.print(io, s.value)
 ##################### IPython IPEP 23: Backbone.js Widgets #################
 function create_widget(widget :: InputWidget)
     comm = Comm(:WidgetModel, true)
