@@ -20,6 +20,7 @@ catch
 end
 
 
+import IJulia
 using  IJulia.CommManager
 import IJulia.CommManager: register_comm, comm_id
 import Base: writemime, mimewritable
