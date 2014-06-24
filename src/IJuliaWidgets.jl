@@ -71,7 +71,6 @@ function register_comm{comm_id}(comm :: Comm{:InputWidget, comm_id}, msg)
         v =  msg.content["data"]["value"]
         recv(w, v)
     end
-    println(methods(CommManager.on_msg))
 end
 
 
