@@ -22,11 +22,12 @@ end
 
 
 import IJulia
+import IJulia: metadata, display_dict
 using  IJulia.CommManager
 import IJulia.CommManager: register_comm, comm_id
 import Base: writemime, mimewritable
 
-export register_comm
+export register_comm, metadata, display_dict
 
 const comms = Dict{Signal, Comm}()
 
@@ -40,10 +41,10 @@ function send_update(comm :: Comm, v)
 end
 
 
-Main.IJulia.display_dict(x :: Signal) =
-    Main.IJulia.display_dict(x.value)
+display_dict(x :: Signal) =
+    display_dict(x.value)
 
-function Main.IJulia.metadata(x :: Signal)
+function metadata(x :: Signal)
     if !haskey(comms, x)
         # One Comm channel per signal object
         comm = Comm(:Signal)
