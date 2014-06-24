@@ -19,10 +19,10 @@ try
 catch
 end
 
-using  Main.IJulia
+
 using  Main.IJulia.CommManager
 import Main.IJulia.CommManager: register_comm
-import Main.IJulia: metadata
+import Base: writemime, mimewritable
 
 export register_comm
 
@@ -38,42 +38,41 @@ function send_update(comm :: Comm, v)
 end
 
 
+Main.IJulia.display_dict(x :: Signal) =
+    Main.IJulia.display_dict(x.value)
+
 function Main.IJulia.metadata(x :: Signal)
+    println( " WORKS " )
     if !haskey(comms, x)
         # One Comm channel per signal object
-        comm = Comm("Signal")
+        comm = Comm(:Signal)
 
         comms[x] = comm   # Backend -> Comm
-
         # prevent resending the first time?
         lift(v -> send_update(comm, v), x)
     else
         comm = comms[x]
     end
-    return ["reactive"=>true, "comm_id"=>comm.id]
+    return ["reactive"=>true, "comm_id"=>comm]
 end
 
-Main.IJulia.display_dict(x :: Signal) =
-    Main.IJulia.display_dict(x.value)
-
 # Render the value of a signal.
-mimewritable(m :: MIME, s :: Signal) =
+mimewritable(io :: IO, m :: MIME, s :: Signal) =
     mimewritable(m, s.value)
 
 
-writemime(m :: MIME, s :: Signal) =
-    writemime(m, s.value)
+writemime(io:: IO, m :: MIME, s :: Signal) =
+    writemime(io :: IO, m, s.value)
 
-function register_comm(comm :: Comm{:InputWidget}, msg)
+function register_comm{comm_id}(comm :: Comm{:InputWidget, comm_id}, msg)
     w_id = msg.content["data"]["widget_id"]
     w = get_widget(w_id)
 
-    function recv_value(msg)
+    function CommManager.on_msg(::Comm{:InputWidget, symbol(comm_id)}, msg)
         v =  msg.content["data"]["value"]
-        recv(w, parse(v, w))
+        recv(w, v)
     end
-
-    on_msg(comm, recv_value)
+    println(methods(CommManager.on_msg))
 end
 
 
