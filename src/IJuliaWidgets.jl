@@ -21,7 +21,7 @@ end
 
 
 using  IJulia.CommManager
-import IJulia.CommManager: register_comm
+import IJulia.CommManager: register_comm, comm_id
 import Base: writemime, mimewritable
 
 export register_comm
@@ -41,7 +41,7 @@ end
 Main.IJulia.display_dict(x :: Signal) =
     Main.IJulia.display_dict(x.value)
 
-function IJulia.metadata(x :: Signal)
+function Main.IJulia.metadata(x :: Signal)
     if !haskey(comms, x)
         # One Comm channel per signal object
         comm = Comm(:Signal)
@@ -52,7 +52,7 @@ function IJulia.metadata(x :: Signal)
     else
         comm = comms[x]
     end
-    return ["reactive"=>true, "comm_id"=>comm_id(comm)]
+    return ["reactive"=>true, "comm_id"=>string(comm_id(comm))]
 end
 
 # Render the value of a signal.

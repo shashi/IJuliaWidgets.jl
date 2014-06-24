@@ -7,10 +7,11 @@
     // XXX: Test using React here to improve performance
     $([IPython.events]).on(
 	'output_appended.OutputArea', function (event, type, value, md, toinsert) {
-    	if (md && md.reactive) {
-    	    toinsert.addClass("signal-" + md.comm_id);
-    	    toinsert.data("type", type);
-    	}
+    	    if (md && md.reactive) {
+		console.log(md.comm_id);
+    		toinsert.addClass("signal-" + md.comm_id);
+    		toinsert.data("type", type);
+    	    }
     });
 
     comm_manager.register_target("Signal", function (comm) {
