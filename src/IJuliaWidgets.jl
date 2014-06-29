@@ -37,7 +37,8 @@ function send_update(comm :: Comm, v)
     #    Queue upto 3, buffer others
     #    Diff and send
     #    Is display_dict the right thing?
-    send_comm(comm, ["value" => Main.IJulia.display_dict(v)])
+    msg = Main.IJulia.display_dict(v)
+    send_comm(comm, ["value" => msg])
 end
 
 
@@ -77,17 +78,51 @@ function register_comm{comm_id}(comm :: Comm{:InputWidget, comm_id}, msg)
 end
 
 JSON.print(io::IO, s::Signal) = JSON.print(io, s.value)
+
 ##################### IPython IPEP 23: Backbone.js Widgets #################
+view_name(::InputWidget) = string(typeof(widget), "Widget")
+
+## ✓CheckboxWidget
+## ✓ToggleButtonWidget
+## ✓ButtonWidget
+## ? ContainerWidget
+## ? PopupWidget
+## ✓FloatSliderWidget
+## T BoundedFloatTextWidget
+## T FloatProgressWidget
+## T FloatTextWidget
+## ? ImageWidget
+## ✓IntSliderWidget
+## ? BoundedIntTextWidget
+## T IntProgressWidget
+## T IntTextWidget
+## ? AccordionWidget
+## ? TabWidget
+## ? ToggleButtonsWidget
+## T RadioButtonsWidget
+## T DropdownWidget
+## T SelectWidget
+## ? HTMLWidget
+## ? LatexWidget
+## ✓TextareaWidget
+## ✓TextWidget
+
+view_name{T<:Integer}(::Slider{T}) = "IntSliderWidget"
+view_name{T<:FloatingPoint}(::Slider{T}) = "FloatSliderWidget"
+
 function create_widget(widget :: InputWidget)
     comm = Comm(:WidgetModel, true)
     # Send a full state update message.
-    widget_name = string(typeof(widget))
+    update_widget(comm, widget)
+end
 
-    state = JSON.parse(JSON.json(widget)) # Is there a better way of doing this?
-    state["msg_throttle"] = 3
-    state["_view_name"] = "$(widget_name)Widget"
+function update_widget(comm :: Comm, widget :: InputWidget)
+    msg = JSON.parse(tojson(widget)) # FIXME!!
+    msg["method"] = "update"
+    msg["msg_throttle"] = 3
+    msg["_view_name"] = view_name(widget)
 
-    
+    send_comm(comm, msg)
 end
 
 end
