@@ -80,7 +80,7 @@ end
 JSON.print(io::IO, s::Signal) = JSON.print(io, s.value)
 
 ##################### IPython IPEP 23: Backbone.js Widgets #################
-view_name(::InputWidget) = string(typeof(widget), "Widget")
+view_name(w::InputWidget) = string(typeof(w), "View")
 
 ## ✓CheckboxWidget
 ## ✓ToggleButtonWidget
@@ -107,22 +107,34 @@ view_name(::InputWidget) = string(typeof(widget), "Widget")
 ## ✓TextareaWidget
 ## ✓TextWidget
 
-view_name{T<:Integer}(::Slider{T}) = "IntSliderWidget"
-view_name{T<:FloatingPoint}(::Slider{T}) = "FloatSliderWidget"
+view_name{T<:Integer}(::Slider{T}) = "IntSliderView"
+view_name{T<:FloatingPoint}(::Slider{T}) = "FloatSliderView"
 
-function create_widget(widget :: InputWidget)
-    comm = Comm(:WidgetModel, true)
-    # Send a full state update message.
-    update_widget(comm, widget)
+# Add state data to the message
+function add_state!(msg, w::InputWidget)
+    attrs = names(w)
+    msg["state"] = Dict()
+    for n in attrs
+        if n == :input continue end
+        msg["state"][n] = getfield(w, n)
+    end
 end
 
-function update_widget(comm :: Comm, widget :: InputWidget)
-    msg = JSON.parse(tojson(widget)) # FIXME!!
+function update_widget(comm :: Comm, w :: InputWidget)
+    msg = Dict()
     msg["method"] = "update"
     msg["msg_throttle"] = 3
-    msg["_view_name"] = view_name(widget)
+    msg["_view_name"] = view_name(w)
+    add_state!(msg, w)
 
     send_comm(comm, msg)
+end
+
+function create_widget(w :: InputWidget)
+    comm = Comm(:WidgetModel)
+    # Send a full state update message.
+    update_widget(comm, w)
+    send_comm(comm, ["method"=>"display"])
 end
 
 end
