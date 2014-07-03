@@ -111,30 +111,41 @@ view_name{T<:Integer}(::Slider{T}) = "IntSliderView"
 view_name{T<:FloatingPoint}(::Slider{T}) = "FloatSliderView"
 
 # Add state data to the message
-function add_state!(msg, w::InputWidget)
+function add_state!(statemsg, w::InputWidget)
     attrs = names(w)
-    msg["state"] = Dict()
     for n in attrs
         if n == :input continue end
-        msg["state"][n] = getfield(w, n)
+        statemsg[n] = getfield(w, n)
     end
 end
 
 function update_widget(comm :: Comm, w :: InputWidget)
     msg = Dict()
     msg["method"] = "update"
-    msg["msg_throttle"] = 3
-    msg["_view_name"] = view_name(w)
-    add_state!(msg, w)
-
+    state = Dict()
+    state["msg_throttle"] = 3
+    state["_view_name"] = view_name(w)
+    state["description"] = w.label
+    state["visible"] = true
+    state["disabled"] = false
+    add_state!(state, w)
+    msg["state"] = state
     send_comm(comm, msg)
 end
 
 function create_widget(w :: InputWidget)
     comm = Comm(:WidgetModel)
+
     # Send a full state update message.
     update_widget(comm, w)
     send_comm(comm, ["method"=>"display"])
+
+    # comm on_msg event handler: send value to the signal graph
+    function CommManager.on_msg(::Comm{:WidgetModel, comm_id(comm)}, msg)
+        if msg.content["data"]["method"] == "backbone"
+            Interact.recv(w, msg.content["data"]["sync_data"]["value"])
+        end
+    end
 end
 
 end
