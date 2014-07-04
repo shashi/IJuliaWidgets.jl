@@ -80,35 +80,35 @@ JSON.print(io::IO, s::Signal) = JSON.print(io, s.value)
 ##################### IPython IPEP 23: Backbone.js Widgets #################
 
 # catchall view name for widgets
-view_name(w::InputWidget) = string(typeof(w), "View")
+view_name(w::InputWidget) = string(typeof(w).name, "View")
 
-## ✓CheckboxWidget
-## ✓ToggleButtonWidget
-## ✓ButtonWidget
-## ? ContainerWidget
-## ? PopupWidget
-## ✓FloatSliderWidget
-## T BoundedFloatTextWidget
-## T FloatProgressWidget
-## T FloatTextWidget
-## ? ImageWidget
-## ✓IntSliderWidget
-## ? BoundedIntTextWidget
-## T IntProgressWidget
-## T IntTextWidget
-## ? AccordionWidget
-## ? TabWidget
-## ? ToggleButtonsWidget
-## T RadioButtonsWidget
-## T DropdownWidget
-## T SelectWidget
-## ? HTMLWidget
-## ? LatexWidget
-## ✓TextareaWidget
-## ✓TextWidget
+## AccordionView W
+## ButtonView
+## CheckboxView ✓
+## ContainerView W
+## DropdownView
+## FloatSliderView ✓
+## FloatTextView ✓
+## HTMLView W
+## ImageView W
+## IntSliderView ✓
+## IntTextView ✓
+## LatexView W
+## PopupView W
+## ProgressView
+## RadioButtonsView
+## SelectView
+## TabView W
+## TextareaView ✓
+## TextView ✓
+## ToggleButtonsView
+## ToggleButtonView
 
 view_name{T<:Integer}(::Slider{T}) = "IntSliderView"
 view_name{T<:FloatingPoint}(::Slider{T}) = "FloatSliderView"
+view_name{T<:Integer}(::Textbox{T}) = "IntTextView"
+view_name{T<:FloatingPoint}(::Textbox{T}) = "FloatTextView"
+view_name(::Textbox) = "TextView"
 
 function update_widget(comm :: Comm, w :: InputWidget)
     msg = Dict()
