@@ -63,8 +63,13 @@ mimewritable(io :: IO, m :: MIME, s :: Signal) =
 
 
 writemime(io:: IO, m :: MIME, s :: Signal) =
-    writemime(io :: IO, m, s.value)
+    writemime(io, m, s.value)
 
+writemime(io::IO, ::MIME{symbol("text/html")},
+          w::InputWidget) =
+              create_widget(w)
+
+## This is for our own widgets.
 function register_comm{comm_id}(comm :: Comm{:InputWidget, comm_id}, msg)
     w_id = msg.content["data"]["widget_id"]
     w = get_widget(w_id)
