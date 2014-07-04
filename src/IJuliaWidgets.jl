@@ -27,8 +27,6 @@ using  IJulia.CommManager
 import IJulia.CommManager: register_comm, comm_id
 import Base: writemime, mimewritable
 
-export register_comm, metadata, display_dict
-
 const comms = Dict{Signal, Comm}()
 
 function send_update(comm :: Comm, v)
@@ -80,6 +78,8 @@ end
 JSON.print(io::IO, s::Signal) = JSON.print(io, s.value)
 
 ##################### IPython IPEP 23: Backbone.js Widgets #################
+
+# catchall view name for widgets
 view_name(w::InputWidget) = string(typeof(w), "View")
 
 ## ✓CheckboxWidget
@@ -110,15 +110,6 @@ view_name(w::InputWidget) = string(typeof(w), "View")
 view_name{T<:Integer}(::Slider{T}) = "IntSliderView"
 view_name{T<:FloatingPoint}(::Slider{T}) = "FloatSliderView"
 
-# Add state data to the message
-function add_state!(statemsg, w::InputWidget)
-    attrs = names(w)
-    for n in attrs
-        if n == :input continue end
-        statemsg[n] = getfield(w, n)
-    end
-end
-
 function update_widget(comm :: Comm, w :: InputWidget)
     msg = Dict()
     msg["method"] = "update"
@@ -128,8 +119,7 @@ function update_widget(comm :: Comm, w :: InputWidget)
     state["description"] = w.label
     state["visible"] = true
     state["disabled"] = false
-    add_state!(state, w)
-    msg["state"] = state
+    msg["state"] = merge(state, statedict(w))
     send_comm(comm, msg)
 end
 
@@ -140,12 +130,13 @@ function create_widget(w :: InputWidget)
     update_widget(comm, w)
     send_comm(comm, ["method"=>"display"])
 
-    # comm on_msg event handler: send value to the signal graph
+    # comm on_msg event handler: send value to Interact
     function CommManager.on_msg(::Comm{:WidgetModel, comm_id(comm)}, msg)
         if msg.content["data"]["method"] == "backbone"
             Interact.recv(w, msg.content["data"]["sync_data"]["value"])
         end
     end
+    nothing # display() nothing
 end
 
 end
