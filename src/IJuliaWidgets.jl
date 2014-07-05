@@ -9,9 +9,6 @@ using Interact
 
 export mimewritable, writemime
 
-include("statedict.jl")
-include("handle_msg.jl")
-
 if !isdefined(Main, :IJulia)
     error("IJuliaWidgets must be imported from inside an IJulia notebook")
 end
@@ -103,8 +100,8 @@ view_name(w::InputWidget) = string(typeof(w).name, "View")
 ## LatexView W
 ## PopupView W
 ## ProgressView
-## RadioButtonsView
-## SelectView
+## RadioButtonsView ✓
+## SelectView ✓
 ## TabView W
 ## TextareaView ✓
 ## TextView ✓
@@ -116,6 +113,7 @@ view_name{T<:FloatingPoint}(::Slider{T}) = "FloatSliderView"
 view_name{T<:Integer}(::Textbox{T}) = "IntTextView"
 view_name{T<:FloatingPoint}(::Textbox{T}) = "FloatTextView"
 view_name(::Textbox) = "TextView"
+view_name{view}(::Options{view}) = string(view, "View")
 
 function update_widget(comm :: Comm, w :: InputWidget)
     msg = Dict()
@@ -142,5 +140,8 @@ function create_widget(w :: InputWidget)
             handle_msg(w, msg)
     nothing # display() nothing
 end
+
+include("statedict.jl")
+include("handle_msg.jl")
 
 end

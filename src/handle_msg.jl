@@ -18,7 +18,7 @@ function handle_msg(w::Button, msg)
     end
 end
 
-function handle_msg(w::Dropdown, msg)
+function handle_msg{view}(w::Options{view}, msg)
     try
         if msg.content["data"]["method"] == "backbone"
             key = msg.content["data"]["sync_data"]["value_name"]
@@ -27,6 +27,6 @@ function handle_msg(w::Dropdown, msg)
             end
         end
     catch e
-        warn(string("Couldn't handle Selection message ", e))
+        warn(string("Couldn't handle ", view, " message ", e))
     end
 end

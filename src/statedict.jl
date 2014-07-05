@@ -9,6 +9,6 @@ statedict(s::Slider) =
      :max=>last(s.range)}
 
 # when we say value to javascript, it really means value label
-statedict(d::Dropdown) =
+statedict(d::Options) =
     {:value_name=>d.value_label,
      :value_names=>map(x -> x[1], keys(d.options))}
