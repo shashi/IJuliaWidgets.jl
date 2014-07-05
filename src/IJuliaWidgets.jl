@@ -88,7 +88,7 @@ JSON.print(io::IO, s::Signal) = JSON.print(io, s.value)
 view_name(w::InputWidget) = string(typeof(w).name, "View")
 
 ## AccordionView W
-## ButtonView
+## ButtonView ✓
 ## CheckboxView ✓
 ## ContainerView W
 ## DropdownView
@@ -107,7 +107,7 @@ view_name(w::InputWidget) = string(typeof(w).name, "View")
 ## TextareaView ✓
 ## TextView ✓
 ## ToggleButtonsView
-## ToggleButtonView
+## ToggleButtonView ✓
 
 view_name{T<:Integer}(::Slider{T}) = "IntSliderView"
 view_name{T<:FloatingPoint}(::Slider{T}) = "FloatSliderView"
@@ -128,6 +128,24 @@ function update_widget(comm :: Comm, w :: InputWidget)
     send_comm(comm, msg)
 end
 
+function handle_incoming(w::InputWidget, msg)
+     if msg.content["data"]["method"] == "backbone"
+         Interact.recv(w, msg.content["data"]["sync_data"]["value"])
+     end
+end
+
+function handle_incoming(w::Button, msg)
+    try
+        if msg.content["data"]["method"] == "custom" &&
+            msg.content["data"]["content"]["event"] == "click"
+            # click event occured
+            push!(w.input, nothing)
+        end
+    catch e
+        warn(string("Couldn't handle Button message ", e))
+    end
+end
+
 function create_widget(w :: InputWidget)
     comm = Comm(:WidgetModel)
 
@@ -135,12 +153,9 @@ function create_widget(w :: InputWidget)
     update_widget(comm, w)
     send_comm(comm, ["method"=>"display"])
 
-    # comm on_msg event handler: send value to Interact
-    function CommManager.on_msg(::Comm{:WidgetModel, comm_id(comm)}, msg)
-        if msg.content["data"]["method"] == "backbone"
-            Interact.recv(w, msg.content["data"]["sync_data"]["value"])
-        end
-    end
+    # dispatch message to widget's handler
+    CommManager.on_msg(::Comm{:WidgetModel, comm_id(comm)}, msg) =
+            handle_incoming(w, msg)
     nothing # display() nothing
 end
 
