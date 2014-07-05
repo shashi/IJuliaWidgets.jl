@@ -9,6 +9,9 @@ using Interact
 
 export mimewritable, writemime
 
+include("statedict.jl")
+include("handle_msg.jl")
+
 if !isdefined(Main, :IJulia)
     error("IJuliaWidgets must be imported from inside an IJulia notebook")
 end
@@ -19,7 +22,6 @@ try
     display("text/html", """<script charset="utf-8">$(ijulia_js)</script>""")
 catch
 end
-
 
 import IJulia
 import IJulia: metadata, display_dict
@@ -91,7 +93,7 @@ view_name(w::InputWidget) = string(typeof(w).name, "View")
 ## ButtonView ✓
 ## CheckboxView ✓
 ## ContainerView W
-## DropdownView
+## DropdownView ✓
 ## FloatSliderView ✓
 ## FloatTextView ✓
 ## HTMLView W
@@ -128,24 +130,6 @@ function update_widget(comm :: Comm, w :: InputWidget)
     send_comm(comm, msg)
 end
 
-function handle_incoming(w::InputWidget, msg)
-     if msg.content["data"]["method"] == "backbone"
-         Interact.recv(w, msg.content["data"]["sync_data"]["value"])
-     end
-end
-
-function handle_incoming(w::Button, msg)
-    try
-        if msg.content["data"]["method"] == "custom" &&
-            msg.content["data"]["content"]["event"] == "click"
-            # click event occured
-            push!(w.input, nothing)
-        end
-    catch e
-        warn(string("Couldn't handle Button message ", e))
-    end
-end
-
 function create_widget(w :: InputWidget)
     comm = Comm(:WidgetModel)
 
@@ -155,7 +139,7 @@ function create_widget(w :: InputWidget)
 
     # dispatch message to widget's handler
     CommManager.on_msg(::Comm{:WidgetModel, comm_id(comm)}, msg) =
-            handle_incoming(w, msg)
+            handle_msg(w, msg)
     nothing # display() nothing
 end
 
