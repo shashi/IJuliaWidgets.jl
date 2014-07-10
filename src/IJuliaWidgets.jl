@@ -53,7 +53,8 @@ function metadata(x :: Signal)
     else
         comm = comms[x]
     end
-    return ["reactive"=>true, "comm_id"=>string(comm_id(comm))]
+    return ["reactive"=>true,
+            "comm_id"=>string(comm_id(comm))]
 end
 
 # Render the value of a signal.
@@ -66,7 +67,7 @@ writemime(io:: IO, m :: MIME, s :: Signal) =
 
 writemime(io::IO, ::MIME{symbol("text/html")},
           w::InputWidget) =
-              create_widget(w)
+              create_view(w)
 
 ## This is for our own widgets.
 function register_comm{comm_id}(comm :: Comm{:InputWidget, comm_id}, msg)
@@ -82,9 +83,6 @@ end
 JSON.print(io::IO, s::Signal) = JSON.print(io, s.value)
 
 ##################### IPython IPEP 23: Backbone.js Widgets #################
-
-# catchall view name for widgets
-view_name(w::InputWidget) = string(typeof(w).name, "View")
 
 ## AccordionView W
 ## ButtonView ✓
@@ -108,6 +106,8 @@ view_name(w::InputWidget) = string(typeof(w).name, "View")
 ## ToggleButtonsView
 ## ToggleButtonView ✓
 
+# catchall view name for widgets
+view_name(w::InputWidget) = string(typeof(w).name, "View")
 view_name{T<:Integer}(::Slider{T}) = "IntSliderView"
 view_name{T<:FloatingPoint}(::Slider{T}) = "FloatSliderView"
 view_name{T<:Integer}(::Textbox{T}) = "IntTextView"
@@ -115,7 +115,12 @@ view_name{T<:FloatingPoint}(::Textbox{T}) = "FloatTextView"
 view_name(::Textbox) = "TextView"
 view_name{view}(::Options{view}) = string(view, "View")
 
-function update_widget(comm :: Comm, w :: InputWidget)
+function metadata(x :: Signal{InputWidget})
+    lift(update_view, x)
+    Dict()
+end
+
+function update_view(comm::Comm, w::InputWidget)
     msg = Dict()
     msg["method"] = "update"
     state = Dict()
@@ -128,18 +133,22 @@ function update_widget(comm :: Comm, w :: InputWidget)
     send_comm(comm, msg)
 end
 
-function create_widget(w :: InputWidget)
+function create_view(w :: InputWidget)
     comm = Comm(:WidgetModel)
 
     # Send a full state update message.
-    update_widget(comm, w)
+    update_view(comm, w)
     send_comm(comm, ["method"=>"display"])
 
-    # dispatch message to widget's handler
-    CommManager.on_msg(::Comm{:WidgetModel, comm_id(comm)}, msg) =
-            handle_msg(w, msg)
+    # dispatch messages to widget's handler
+    function CommManager.on_msg(::Comm{:WidgetModel, comm_id(comm)}, msg)
+        handle_msg(w, msg)
+        # finally notify the frontend of any changes
+        update_view(comm, w)
+    end
     nothing # display() nothing
 end
+
 
 include("statedict.jl")
 include("handle_msg.jl")
