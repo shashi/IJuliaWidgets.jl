@@ -120,7 +120,8 @@ function metadata(x :: Signal{InputWidget})
     Dict()
 end
 
-function update_view(comm::Comm, w::InputWidget)
+const widget_comms = Dict{Widget, Comm}()
+function update_view(w::InputWidget)
     msg = Dict()
     msg["method"] = "update"
     state = Dict()
@@ -130,25 +131,28 @@ function update_view(comm::Comm, w::InputWidget)
     state["visible"] = true
     state["disabled"] = false
     msg["state"] = merge(state, statedict(w))
-    send_comm(comm, msg)
+    send_comm(widget_comms[w], msg)
 end
 
 function create_view(w :: InputWidget)
-    comm = Comm(:WidgetModel)
+    if haskey(widget_comms, w)
+        comm = widget_comms[w]
+    else
+        comm = Comm(:WidgetModel)
+        widget_comms[w] = comm
+        # Send a full state update message.
+        update_view(w)
 
-    # Send a full state update message.
-    update_view(comm, w)
-    send_comm(comm, ["method"=>"display"])
-
-    # dispatch messages to widget's handler
-    function CommManager.on_msg(::Comm{:WidgetModel, comm_id(comm)}, msg)
-        handle_msg(w, msg)
-        # finally notify the frontend of any changes
-        update_view(comm, w)
+        # dispatch messages to widget's handler
+        function CommManager.on_msg(::Comm{:WidgetModel, comm_id(comm)}, msg)
+            handle_msg(w, msg)
+            update_view(w)
+        end
+        nothing # display() nothing
     end
-    nothing # display() nothing
-end
 
+    send_comm(comm, ["method"=>"display"])
+end
 
 include("statedict.jl")
 include("handle_msg.jl")
