@@ -11,4 +11,4 @@ statedict(s::Slider) =
 # when we say value to javascript, it really means value label
 statedict(d::Options) =
     {:value_name=>d.value_label,
-     :value_names=>map(x -> x[1], keys(d.options))}
+     :value_names=>collect(keys(d.options))}
