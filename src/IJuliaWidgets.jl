@@ -7,6 +7,7 @@ using JSON
 using React
 using Interact
 
+import Interact.update_view
 export mimewritable, writemime
 
 if !isdefined(Main, :IJulia)
@@ -146,7 +147,6 @@ function create_view(w :: InputWidget)
         # dispatch messages to widget's handler
         function CommManager.on_msg(::Comm{:WidgetModel, comm_id(comm)}, msg)
             handle_msg(w, msg)
-            update_view(w)
         end
         nothing # display() nothing
     end
