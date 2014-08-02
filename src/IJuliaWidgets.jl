@@ -39,7 +39,6 @@ function send_update(comm :: Comm, v)
     send_comm(comm, ["value" => msg])
 end
 
-
 display_dict(x :: Signal) =
     display_dict(x.value)
 
@@ -62,9 +61,14 @@ end
 mimewritable(io :: IO, m :: MIME, s :: Signal) =
     mimewritable(m, s.value)
 
-
 writemime(io:: IO, m :: MIME, s :: Signal) =
     writemime(io, m, s.value)
+
+function writemime{T <: InputWidget}(io::IO,
+                                ::MIME{symbol("text/html")},
+                                s::Signal{T})
+    create_widget_signal(s)
+end
 
 writemime(io::IO, ::MIME{symbol("text/html")},
           w::InputWidget) =
@@ -85,27 +89,27 @@ JSON.print(io::IO, s::Signal) = JSON.print(io, s.value)
 
 ##################### IPython IPEP 23: Backbone.js Widgets #################
 
-## AccordionView W
 ## ButtonView ✓
 ## CheckboxView ✓
-## ContainerView W
 ## DropdownView ✓
 ## FloatSliderView ✓
 ## FloatTextView ✓
-## HTMLView W
-## ImageView W
 ## IntSliderView ✓
 ## IntTextView ✓
-## LatexView W
-## PopupView W
 ## ProgressView
 ## RadioButtonsView ✓
 ## SelectView ✓
-## TabView W
 ## TextareaView ✓
 ## TextView ✓
-## ToggleButtonsView
+## ToggleButtonsView ✓
 ## ToggleButtonView ✓
+## AccordionView W
+## ContainerView W
+## HTMLView W
+## ImageView W
+## LatexView W
+## PopupView W
+## TabView W
 
 # catchall view name for widgets
 view_name(w::InputWidget) = string(typeof(w).name, "View")
@@ -116,26 +120,25 @@ view_name{T<:FloatingPoint}(::Textbox{T}) = "FloatTextView"
 view_name(::Textbox) = "TextView"
 view_name{view}(::Options{view}) = string(view, "View")
 
-function metadata(x :: Signal{InputWidget})
-    lift(update_view, x)
+function metadata{T <: Widget}(x :: Signal{T})
     Dict()
 end
 
 const widget_comms = Dict{Widget, Comm}()
-function update_view(w::InputWidget)
+function update_view(w::InputWidget; src::Widget=w)
     msg = Dict()
     msg["method"] = "update"
     state = Dict()
     state["msg_throttle"] = 3
-    state["_view_name"] = view_name(w)
+    state["_view_name"] = view_name(src)
     state["description"] = w.label
     state["visible"] = true
     state["disabled"] = false
-    msg["state"] = merge(state, statedict(w))
+    msg["state"] = merge(state, statedict(src))
     send_comm(widget_comms[w], msg)
 end
 
-function create_view(w :: InputWidget)
+function create_view(w::InputWidget)
     if haskey(widget_comms, w)
         comm = widget_comms[w]
     else
@@ -152,6 +155,16 @@ function create_view(w :: InputWidget)
     end
 
     send_comm(comm, ["method"=>"display"])
+end
+
+const widget_signals = Dict{Signal{Widget}, Widget}
+function create_widget_signal(s)
+    if haskey(widget_signals, s)
+        update_view(widget_signals[s], src=s.value)
+    else
+        create_view(s.value)
+        widget_signals[s] = s.value
+    end
 end
 
 include("statedict.jl")
