@@ -24,7 +24,7 @@ end
 import IJulia
 import IJulia: metadata, display_dict
 using  IJulia.CommManager
-import IJulia.CommManager: register_comm, comm_id
+import IJulia.CommManager: register_comm
 import Base: writemime, mimewritable
 
 const comms = Dict{Signal, Comm}()
@@ -54,7 +54,7 @@ function metadata(x :: Signal)
         comm = comms[x]
     end
     return ["reactive"=>true,
-            "comm_id"=>string(comm_id(comm))]
+            "comm_id"=>comm.id]
 end
 
 # Render the value of a signal.
@@ -76,13 +76,11 @@ writemime(io::IO, ::MIME{symbol("text/html")},
 
 ## This is for our own widgets.
 function register_comm{comm_id}(comm :: Comm{:InputWidget, comm_id}, msg)
+function register_comm(comm::Comm{:InputWidget}, msg)
     w_id = msg.content["data"]["widget_id"]
     w = get_widget(w_id)
 
-    function CommManager.on_msg(::Comm{:InputWidget, symbol(comm_id)}, msg)
-        v =  msg.content["data"]["value"]
-        recv(w, v)
-    end
+    comm.on_msg = (msg) -> recv(w, msg.content["data"]["value"])
 end
 
 JSON.print(io::IO, s::Signal) = JSON.print(io, s.value)
