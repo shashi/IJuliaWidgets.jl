@@ -13,7 +13,7 @@ export mimewritable, writemime
 if !isdefined(Main, :IJulia)
     error("IJuliaWidgets must be imported from inside an IJulia notebook")
 end
-    
+
 const ijulia_js  = readall(joinpath(dirname(Base.source_path()), "ijulia.js"))
 
 try
@@ -35,18 +35,14 @@ function send_update(comm :: Comm, v)
     #    Queue upto 3, buffer others
     #    Diff and send
     #    Is display_dict the right thing?
-    msg = Main.IJulia.display_dict(v)
+    msg = display_dict(v)
     send_comm(comm, ["value" => msg])
 end
-
-display_dict(x :: Signal) =
-    display_dict(x.value)
 
 function metadata(x :: Signal)
     if !haskey(comms, x)
         # One Comm channel per signal object
         comm = Comm(:Signal)
-
         comms[x] = comm   # Backend -> Comm
         # prevent resending the first time?
         lift(v -> send_update(comm, v), x)
@@ -58,28 +54,31 @@ function metadata(x :: Signal)
 end
 
 # Render the value of a signal.
-mimewritable(io :: IO, m :: MIME, s :: Signal) =
+mimewritable(m :: MIME, s :: Signal) =
     mimewritable(m, s.value)
 
-writemime(io:: IO, m :: MIME, s :: Signal) =
+function writemime(io:: IO, m :: MIME, s :: Signal)
     writemime(io, m, s.value)
-
-function writemime{T <: InputWidget}(io::IO,
-                                ::MIME{symbol("text/html")},
-                                s::Signal{T})
-    create_widget_signal(s)
 end
 
-writemime(io::IO, ::MIME{symbol("text/html")},
-          w::InputWidget) =
-              create_view(w)
+function writemime(io::IO, ::MIME{symbol("text/html")},
+          w::InputWidget)
+    create_view(w)
+end
+
+function writemime(io::IO, ::MIME{symbol("text/html")},
+                   w::Widget)
+    create_view(w)
+end
+
+function writemime{T<:Widget}(io::IO, ::MIME{symbol("text/html")},
+                              x::Signal{T})
+    create_widget_signal(x)
+end
 
 ## This is for our own widgets.
-function register_comm{comm_id}(comm :: Comm{:InputWidget, comm_id}, msg)
 function register_comm(comm::Comm{:InputWidget}, msg)
     w_id = msg.content["data"]["widget_id"]
-    w = get_widget(w_id)
-
     comm.on_msg = (msg) -> recv(w, msg.content["data"]["value"])
 end
 
@@ -109,8 +108,8 @@ JSON.print(io::IO, s::Signal) = JSON.print(io, s.value)
 ## PopupView W
 ## TabView W
 
-# catchall view name for widgets
-view_name(w::InputWidget) = string(typeof(w).name, "View")
+# Interact -> IJulia view names
+view_name(w::Widget) = string(typeof(w).name, "View")
 view_name{T<:Integer}(::Slider{T}) = "IntSliderView"
 view_name{T<:FloatingPoint}(::Slider{T}) = "FloatSliderView"
 view_name{T<:Integer}(::Textbox{T}) = "IntTextView"
@@ -123,7 +122,7 @@ function metadata{T <: Widget}(x :: Signal{T})
 end
 
 const widget_comms = Dict{Widget, Comm}()
-function update_view(w::InputWidget; src::Widget=w)
+function update_view(w::InputWidget; src::InputWidget=w)
     msg = Dict()
     msg["method"] = "update"
     state = Dict()
@@ -136,7 +135,20 @@ function update_view(w::InputWidget; src::Widget=w)
     send_comm(widget_comms[w], msg)
 end
 
-function create_view(w::InputWidget)
+function update_view(w::Widget; src::Widget=w)
+    msg = Dict()
+    msg["method"] = "update"
+    state = Dict()
+    state["msg_throttle"] = 3
+    state["_view_name"] = view_name(src)
+    state["visible"] = true
+    state["disabled"] = false
+    msg["state"] = merge(state, statedict(src))
+    send_comm(widget_comms[w], msg)
+    nothing
+end
+
+function create_view(w::Widget)
     if haskey(widget_comms, w)
         comm = widget_comms[w]
     else
@@ -146,23 +158,17 @@ function create_view(w::InputWidget)
         update_view(w)
 
         # dispatch messages to widget's handler
-        function CommManager.on_msg(::Comm{:WidgetModel, comm_id(comm)}, msg)
-            handle_msg(w, msg)
-        end
+        comm.on_msg = msg -> handle_msg(w, msg)
         nothing # display() nothing
     end
 
     send_comm(comm, ["method"=>"display"])
 end
 
-const widget_signals = Dict{Signal{Widget}, Widget}
 function create_widget_signal(s)
-    if haskey(widget_signals, s)
-        update_view(widget_signals[s], src=s.value)
-    else
-        create_view(s.value)
-        widget_signals[s] = s.value
-    end
+    create_view(s.value)
+    local target = s.value
+    lift(x->update_view(target, src=x), s, init=nothing)
 end
 
 include("statedict.jl")
