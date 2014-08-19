@@ -22,7 +22,12 @@
 			var self = this;
 			var type = $(this).data("type");
 			if (val[type]) {
-			    var oa = new IPython.OutputArea();
+			    var oa = new IPython.OutputArea({
+				selector: $('<div/>'),
+				prompt_area: true,
+				events: IPython.events,
+				keyboard_manager: IPython.keyboard_manager
+			    });
 			    var toinsert = IPython.OutputArea.append_map[type].apply(
 				oa, [val[type], {}, $("<div/>")]
 			    );
