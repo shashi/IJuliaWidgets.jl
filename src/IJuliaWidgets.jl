@@ -1,5 +1,3 @@
-require("React")
-require("Interact")
 
 module IJuliaWidgets
 
