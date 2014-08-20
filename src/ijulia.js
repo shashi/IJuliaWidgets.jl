@@ -1,10 +1,8 @@
 (function (IPython, $, Widgets) {
-    // Special event to watch for removal of an element
-    // http://stackoverflow.com/a/10172676
     $.event.special.destroyed = {
 	remove: function(o) {
 	    if (o.handler) {
-		o.handler()
+		o.handler.apply(this, arguments)
 	    }
 	}
     }
@@ -18,13 +16,13 @@
 	    'output_appended.OutputArea', function (event, type, value, md, toinsert) {
 		if (md && md.reactive) {
 		    // console.log(md.comm_id);
+		    toinsert.addClass("signal-" + md.comm_id);
 		    toinsert.data("type", type);
-		    // subscribe to updates in a specific mime type
+		    // Signal back indicating the mimetype required
 		    var comm_manager = IPython.notebook.kernel.comm_manager;
 		    var comm = comm_manager.comms[md.comm_id];
 		    comm.send({action: "subscribe_mime",
 			       mime: type});
-		    // unsubscribe to the mimetype when element is destroyed
 		    toinsert.bind("destroyed", function() {
 			comm.send({action: "unsubscribe_mime",
 				   mime: type});
@@ -54,7 +52,7 @@
 			}
 		    });
 		    delete val;
-		    delete msg.content.data; // GC
+		    delete msg.content.data.value;
 		});
 	    });
 

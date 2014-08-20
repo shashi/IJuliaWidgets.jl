@@ -43,21 +43,20 @@ function get_data_dict(value, mimetypes)
 end
 
 function init_comm(x::Signal)
-    subscriptions = Dict{ASCIIString, Int}()
-    function handle_subscriptions(msg)
-        if haskey(msg.content, "data")
-            action = get(msg.content["data"], "action", "")
-            if action == "subscribe_mime"
-                mime = msg.content["data"]["mime"]
-                subscriptions[mime] = get(subscriptions, mime, 0) + 1
-            elseif action == "unsubscribe_mime"
-                mime = msg.content["data"]["mime"]
-                subscriptions[mime] = get(subscriptions, mime, 1) - 1
+    if !haskey(comms, x)
+        subscriptions = Dict{ASCIIString, Int}()
+        function handle_subscriptions(msg)
+            if haskey(msg.content, "data")
+                action = get(msg.content["data"], "action", "")
+                if action == "subscribe_mime"
+                    mime = msg.content["data"]["mime"]
+                    subscriptions[mime] = get(subscriptions, mime, 0) + 1
+                elseif action == "unsubscribe_mime"
+                    mime = msg.content["data"]["mime"]
+                    subscriptions[mime] = get(subscriptions, mime, 1) - 1
+                end
             end
         end
-    end
-
-    if !haskey(comms, x)
         # One Comm channel per signal object
         comm = Comm(:Signal)
         comms[x] = comm   # Backend -> Comm
@@ -66,8 +65,10 @@ function init_comm(x::Signal)
         # prevent resending the first time?
         function notify(value)
             mimes = keys(filter((k,v) -> v > 0, subscriptions))
-            send_comm(comm, [:value =>
-                             get_data_dict(value, mimes)])
+            if length(mimes) > 0
+                send_comm(comm, [:value =>
+                                 get_data_dict(value, mimes)])
+            end
         end
         lift(notify, x)
     else
