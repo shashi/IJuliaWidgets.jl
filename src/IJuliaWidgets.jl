@@ -27,10 +27,6 @@ import Base: writemime, mimewritable
 
 const comms = Dict{Signal, Comm}()
 
-function send_update(comm :: Comm, v)
-    send_comm(comm, ["value" => v])
-end
-
 function get_data_dict(value, mimetypes)
     dict = Dict{ASCIIString, ByteString}()
     for m in mimetypes
@@ -46,26 +42,43 @@ function get_data_dict(value, mimetypes)
     return dict
 end
 
-function metadata(x :: Signal)
-    subscribed_mimes = String[]
-    function register_mime(msg)
-        if haskey(msg.content, "data") &&
-            get(msg.content["data"], "action", "") == "subscribe_mime"
-            push!(subscribed_mimes, msg.content["data"]["mime"])
+function init_comm(x::Signal)
+    subscriptions = Dict{ASCIIString, Int}()
+    function handle_subscriptions(msg)
+        if haskey(msg.content, "data")
+            action = get(msg.content["data"], "action", "")
+            if action == "subscribe_mime"
+                mime = msg.content["data"]["mime"]
+                subscriptions[mime] = get(subscriptions, mime, 0) + 1
+            elseif action == "unsubscribe_mime"
+                mime = msg.content["data"]["mime"]
+                subscriptions[mime] = get(subscriptions, mime, 1) - 1
+            end
         end
     end
+
     if !haskey(comms, x)
         # One Comm channel per signal object
         comm = Comm(:Signal)
         comms[x] = comm   # Backend -> Comm
         # Listen for mime type registrations
-        comm.on_msg = register_mime
+        comm.on_msg = handle_subscriptions
         # prevent resending the first time?
-        notify(v) = send_update(comm, get_data_dict(v, subscribed_mimes))
+        function notify(value)
+            mimes = keys(filter((k,v) -> v > 0, subscriptions))
+            send_comm(comm, [:value =>
+                             get_data_dict(value, mimes)])
+        end
         lift(notify, x)
     else
         comm = comms[x]
     end
+
+    return comm
+end
+
+function metadata(x :: Signal)
+    comm = init_comm(x)
     return ["reactive"=>true,
             "comm_id"=>comm.id]
 end
