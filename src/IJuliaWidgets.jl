@@ -172,6 +172,7 @@ function update_view(w::Widget; src::Widget=w)
     state = Dict()
     state["msg_throttle"] = 3
     state["_view_name"] = view_name(src)
+    state["description"] = w.label
     state["visible"] = true
     state["disabled"] = false
     msg["state"] = merge(state, statedict(src))

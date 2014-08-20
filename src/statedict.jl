@@ -2,7 +2,7 @@ using Interact
 
 import Interact.statedict
 
-statedict(s::Slider) =
+statedict(s::Union(Slider, Progress)) =
     {:value=>s.value,
      :min=>first(s.range),
      :step=>step(s.range),
