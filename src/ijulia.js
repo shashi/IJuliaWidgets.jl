@@ -28,17 +28,18 @@
 			var type = $(this).data("type");
 			if (val[type]) {
 			    var oa = new IPython.OutputArea({
-				selector: $('<div/>'),
+				selector: $(self),
 				prompt_area: true,
 				events: IPython.events,
 				keyboard_manager: IPython.keyboard_manager
 			    });
 			    var toinsert = IPython.OutputArea.append_map[type].apply(
-				oa, [val[type], {}, $("<div/>")]
+				oa, [val[type], {}, $(self).empty()]
 			    );
-			    $(self).html(toinsert.html());
+			    delete toinsert;
 			}
 		    });
+		    delete msg.content.data; // GC
 		});
 	    });
 
