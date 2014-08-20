@@ -28,22 +28,41 @@ import Base: writemime, mimewritable
 const comms = Dict{Signal, Comm}()
 
 function send_update(comm :: Comm, v)
-    # do this better!!
-    # Thoughts:
-    #    Queue upto 3, buffer others
-    #    Diff and send
-    #    Is display_dict the right thing?
-    msg = display_dict(v)
-    send_comm(comm, ["value" => msg])
+    send_comm(comm, ["value" => v])
+end
+
+function get_data_dict(value, mimetypes)
+    dict = Dict{ASCIIString, ByteString}()
+    for m in mimetypes
+        if mimewritable(m, value)
+            dict[m] = stringmime(m, value)
+        elseif m == "text/latex" && mimewritable("application/x-latex", value)
+            dict[string("text/latex")] =
+                stringmime("application/x-latex", value)
+        else
+            warn("IPython seems to be requesting an unavailable mime type")
+        end
+    end
+    return dict
 end
 
 function metadata(x :: Signal)
+    subscribed_mimes = String[]
+    function register_mime(msg)
+        if haskey(msg.content, "data") &&
+            get(msg.content["data"], "action", "") == "subscribe_mime"
+            push!(subscribed_mimes, msg.content["data"]["mime"])
+        end
+    end
     if !haskey(comms, x)
         # One Comm channel per signal object
         comm = Comm(:Signal)
         comms[x] = comm   # Backend -> Comm
+        # Listen for mime type registrations
+        comm.on_msg = register_mime
         # prevent resending the first time?
-        lift(v -> send_update(comm, v), x)
+        notify(v) = send_update(comm, get_data_dict(v, subscribed_mimes))
+        lift(notify, x)
     else
         comm = comms[x]
     end

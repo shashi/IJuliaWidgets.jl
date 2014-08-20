@@ -10,6 +10,11 @@
 		    // console.log(md.comm_id);
 		    toinsert.addClass("signal-" + md.comm_id);
 		    toinsert.data("type", type);
+		    // Signal back indicating the mimetype required
+		    var comm_manager = IPython.notebook.kernel.comm_manager;
+		    var comm = comm_manager.comms[md.comm_id];
+		    comm.send({action: "subscribe_mime",
+			       mime: type});
 		}
 	});
 	function initComm(evt, data) {
