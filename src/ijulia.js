@@ -1,4 +1,4 @@
-(function (IPython, $, Widgets) {
+(function (IPython, $, _, Widgets) {
     $.event.special.destroyed = {
 	remove: function(o) {
 	    if (o.handler) {
@@ -9,26 +9,6 @@
 
     $(document).ready(function() {
 	Widgets.debug = false; // log messages etc in console.
-
-	// coordingate with Comm and redraw Signals
-	// XXX: Test using React here to improve performance
-	$([IPython.events]).on(
-	    'output_appended.OutputArea', function (event, type, value, md, toinsert) {
-		if (md && md.reactive) {
-		    // console.log(md.comm_id);
-		    toinsert.addClass("signal-" + md.comm_id);
-		    toinsert.data("type", type);
-		    // Signal back indicating the mimetype required
-		    var comm_manager = IPython.notebook.kernel.comm_manager;
-		    var comm = comm_manager.comms[md.comm_id];
-		    comm.send({action: "subscribe_mime",
-			       mime: type});
-		    toinsert.bind("destroyed", function() {
-			comm.send({action: "unsubscribe_mime",
-				   mime: type});
-		    });
-		}
-	});
 	function initComm(evt, data) {
 	    var comm_manager = data.kernel.comm_manager;
 	    comm_manager.register_target("Signal", function (comm) {
@@ -39,14 +19,15 @@
 			var self = this;
 			var type = $(this).data("type");
 			if (val[type]) {
-			    var oa = new IPython.OutputArea({
-				selector: $(self),
+			    var selector = $(self).empty();
+			    var oa = new IPython.OutputArea(_.extend(selector, {
+				selector: selector,
 				prompt_area: true,
 				events: IPython.events,
 				keyboard_manager: IPython.keyboard_manager
-			    });
+			    })); // Hack to work with IPython 2.1.0
 			    var toinsert = IPython.OutputArea.append_map[type].apply(
-				oa, [val[type], {}, $(self).empty()]
+				oa, [val[type], {}, selector]
 			    );
 			    delete toinsert;
 			}
@@ -54,6 +35,26 @@
 		    delete val;
 		    delete msg.content.data.value;
 		});
+	    });
+
+	    // coordingate with Comm and redraw Signals
+	    // XXX: Test using React here to improve performance
+	    $([IPython.events]).on(
+		'output_appended.OutputArea', function (event, type, value, md, toinsert) {
+		    if (md && md.reactive) {
+			// console.log(md.comm_id);
+			toinsert.addClass("signal-" + md.comm_id);
+			toinsert.data("type", type);
+			// Signal back indicating the mimetype required
+			var comm_manager = IPython.notebook.kernel.comm_manager;
+			var comm = comm_manager.comms[md.comm_id];
+			comm.send({action: "subscribe_mime",
+				   mime: type});
+			toinsert.bind("destroyed", function() {
+			    comm.send({action: "unsubscribe_mime",
+				       mime: type});
+			});
+		    }
 	    });
 
 	    // Set up communication for Widgets
@@ -78,4 +79,4 @@
 	    $([IPython.events]).on('status_started.Kernel', initComm);
 	}
     });
-})(IPython, jQuery, InputWidgets);
+})(IPython, jQuery, _, InputWidgets);
