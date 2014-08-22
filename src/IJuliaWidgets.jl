@@ -162,6 +162,7 @@ function update_view(w::InputWidget; src::InputWidget=w)
     state["description"] = w.label
     state["visible"] = true
     state["disabled"] = false
+    state["readout"] = true
     msg["state"] = merge(state, statedict(src))
     send_comm(widget_comms[w], msg)
 end
